@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .quiz-card {
+            transition: all 0.3s ease;
+        }
+        .quiz-card:hover {
+            transform: translateY(-5px);
+        }
+        .option-btn {
+            transition: all 0.2s ease;
+        }
+        .option-btn:hover:not(.selected) {
+            transform: translateX(5px);
+        }
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-blue-100 min-h-screen">
+    <div x-data="quizApp()" class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-indigo-800 mb-2">Knowledge Quest</h1>
+            <p class="text-gray-600">Test your knowledge with our interactive quiz!</p>
+        </header>
+
+        <!-- Start Screen -->
+        <div x-show="!quizStarted && !quizCompleted" class="max-w-md mx-auto">
+            <div class="bg-white rounded-xl shadow-lg p-8 quiz-card">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Ready to begin?</h2>
+                <p class="text-gray-600 mb-6">This quiz contains <span class="font-semibold text-indigo-600" x-text="questions.length"></span> questions to test your knowledge. Good luck!</p>
+                <button
+                    @click="startQuiz"
+                    class="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+                >
+                    Start Quiz
+                </button>
+            </div>
+        </div>
+
+        <!-- Quiz Questions -->
+        <div x-show="quizStarted && !quizCompleted" class="max-w-2xl mx-auto">
+            <!-- Progress Bar -->
+            <div class="mb-6 bg-gray-200 rounded-full h-2.5">
+                <div class="progress-bar bg-indigo-600 h-2.5 rounded-full" :style="`width: ${(currentQuestionIndex / questions.length) * 100}%`"></div>
+            </div>
+
+            <!-- Question Counter -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-sm font-medium text-gray-600">Question <span x-text="currentQuestionIndex + 1"></span> of <span x-text="questions.length"></span></span>
+                <span class="text-sm font-medium text-indigo-600">Score: <span x-text="score"></span></span>
+            </div>
+
+            <!-- Question Card -->
+            <div class="bg-white rounded-xl shadow-lg p-8 mb-6 quiz-card">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6" x-text="currentQuestion.question"></h2>
+
+                <!-- Options -->
+                <div class="space-y-3">
+                    <template x-for="(option, index) in currentQuestion.options" :key="index">
+                        <button
+                            @click="selectOption(index)"
+                            :class="{
+                                'option-btn w-full text-left py-3 px-6 rounded-lg font-medium transition': true,
+                                'bg-gray-100 hover:bg-gray-200 text-gray-800': selectedOption === null,
+                                'bg-green-100 text-green-800 selected': answerSubmitted && index === currentQuestion.correctAnswer,
+                                'bg-red-100 text-red-800 selected': answerSubmitted && selectedOption === index && index !== currentQuestion.correctAnswer,
+                                'bg-indigo-100 text-indigo-800 selected': !answerSubmitted && selectedOption === index
+                            }"
+                            :disabled="answerSubmitted"
+                        >
+                            <span x-text="option"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Feedback -->
+                <div x-show="answerSubmitted" class="mt-6 p-4 rounded-lg" :class="{'bg-green-50': isCorrect, 'bg-red-50': !isCorrect}">
+                    <p x-text="feedbackMessage" :class="{'text-green-700': isCorrect, 'text-red-700': !isCorrect}"></p>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between">
+                <button
+                    x-show="currentQuestionIndex > 0"
+                    @click="previousQuestion"
+                    class="py-2 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition duration-300 focus:outline-none"
+                >
+                    Previous
+                </button>
+                <div class="flex-grow"></div>
+                <button
+                    x-show="answerSubmitted"
+                    @click="nextQuestion"
+                    class="py-2 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 focus:outline-none"
+                    :class="{'opacity-50 cursor-not-allowed': currentQuestionIndex === questions.length - 1}"
+                >
+                    <span x-text="currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question'"></span>
+                </button>
+                <button
+                    x-show="!answerSubmitted"
+                    @click="submitAnswer"
+                    class="py-2 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 focus:outline-none"
+                    :disabled="selectedOption === null"
+                    :class="{'opacity-50 cursor-not-allowed': selectedOption === null}"
+                >
+                    Submit Answer
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div x-show="quizCompleted" class="max-w-md mx-auto">
+            <div class="bg-white rounded-xl shadow-lg p-8 quiz-card">
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-full mb-6">
+                        <span class="text-3xl font-bold text-indigo-600" x-text="`${Math.round((score / questions.length) * 100)}%`"></span>
+                    </div>
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-2">Quiz Completed!</h2>
+                    <p class="text-gray-600 mb-6">You scored <span class="font-semibold text-indigo-600" x-text="score"></span> out of <span x-text="questions.length"></span> questions.</p>
+
+                    <!-- Performance Message -->
+                    <p class="mb-8 font-medium" :class="{
+                        'text-green-600': (score / questions.length) >= 0.8,
+                        'text-yellow-600': (score / questions.length) >= 0.5 && (score / questions.length) < 0.8,
+                        'text-red-600': (score / questions.length) < 0.5
+                    }" x-text="getPerformanceMessage()"></p>
+
+                    <button
+                        @click="restartQuiz"
+                        class="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function quizApp() {
+            return {
+                quizStarted: false,
+                quizCompleted: false,
+                currentQuestionIndex: 0,
+                selectedOption: null,
+                answerSubmitted: false,
+                isCorrect: false,
+                feedbackMessage: '',
+                score: 0,
+                questions: [
+                    {
+                        question: "What is the capital of France?",
+                        options: ["London", "Berlin", "Paris", "Madrid"],
+                        correctAnswer: 2,
+                        explanation: "Paris is the capital and most populous city of France."
+                    },
+                    {
+                        question: "Which planet is known as the Red Planet?",
+                        options: ["Venus", "Mars", "Jupiter", "Saturn"],
+                        correctAnswer: 1,
+                        explanation: "Mars is often called the Red Planet due to its reddish appearance."
+                    },
+                    {
+                        question: "What is the largest mammal in the world?",
+                        options: ["Elephant", "Blue Whale", "Giraffe", "Polar Bear"],
+                        correctAnswer: 1,
+                        explanation: "The Blue Whale is the largest animal known to have ever existed."
+                    },
+                    {
+                        question: "Which element has the chemical symbol 'O'?",
+                        options: ["Gold", "Oxygen", "Osmium", "Oganesson"],
+                        correctAnswer: 1,
+                        explanation: "Oxygen has the chemical symbol 'O' and atomic number 8."
+                    },
+                    {
+                        question: "Who painted the Mona Lisa?",
+                        options: ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Michelangelo"],
+                        correctAnswer: 2,
+                        explanation: "The Mona Lisa was painted by Leonardo da Vinci in the early 16th century."
+                    }
+                ],
+
+                get currentQuestion() {
+                    return this.questions[this.currentQuestionIndex];
+                },
+
+                startQuiz() {
+                    this.quizStarted = true;
+                    this.quizCompleted = false;
+                    this.currentQuestionIndex = 0;
+                    this.score = 0;
+                    this.resetQuestion();
+                },
+
+                resetQuestion() {
+                    this.selectedOption = null;
+                    this.answerSubmitted = false;
+                    this.feedbackMessage = '';
+                },
+
+                selectOption(index) {
+                    if (!this.answerSubmitted) {
+                        this.selectedOption = index;
+                    }
+                },
+
+                submitAnswer() {
+                    if (this.selectedOption !== null) {
+                        this.answerSubmitted = true;
+                        this.isCorrect = this.selectedOption === this.currentQuestion.correctAnswer;
+
+                        if (this.isCorrect) {
+                            this.score++;
+                            this.feedbackMessage = `Correct! ${this.currentQuestion.explanation}`;
+                        } else {
+                            this.feedbackMessage = `Incorrect. The correct answer is "${this.currentQuestion.options[this.currentQuestion.correctAnswer]}". ${this.currentQuestion.explanation}`;
+                        }
+                    }
+                },
+
+                nextQuestion() {
+                    if (this.currentQuestionIndex < this.questions.length - 1) {
+                        this.currentQuestionIndex++;
+                        this.resetQuestion();
+                    } else {
+                        this.quizCompleted = true;
+                        this.quizStarted = false;
+                    }
+                },
+
+                previousQuestion() {
+                    if (this.currentQuestionIndex > 0) {
+                        this.currentQuestionIndex--;
+                        this.resetQuestion();
+                    }
+                },
+
+                restartQuiz() {
+                    this.startQuiz();
+                },
+
+                getPerformanceMessage() {
+                    const percentage = this.score / this.questions.length;
+
+                    if (percentage >= 0.8) {
+                        return "Excellent! You're a quiz master!";
+                    } else if (percentage >= 0.6) {
+                        return "Good job! You know your stuff!";
+                    } else if (percentage >= 0.4) {
+                        return "Not bad, but there's room for improvement.";
+                    } else {
+                        return "Keep studying and try again!";
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>
