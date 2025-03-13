@@ -26,6 +26,9 @@
         .progress-bar {
             transition: width 0.5s ease;
         }
+        [x-cloak] {
+            display: none !important;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 to-blue-100 min-h-screen">
@@ -37,7 +40,7 @@
         </header>
 
         <!-- Start Screen -->
-        <div x-show="!quizStarted && !quizCompleted" class="max-w-md mx-auto">
+        <div x-show="!quizStarted && !quizCompleted" class="max-w-md mx-auto" x-cloak>
             <div class="bg-white rounded-xl shadow-lg p-8 quiz-card">
                 <h2 class="text-2xl font-semibold text-gray-800 mb-4">Ready to begin?</h2>
                 <p class="text-gray-600 mb-6">This quiz contains <span class="font-semibold text-indigo-600" x-text="questions.length"></span> questions to test your knowledge. Good luck!</p>
@@ -51,7 +54,7 @@
         </div>
 
         <!-- Quiz Questions -->
-        <div x-show="quizStarted && !quizCompleted" class="max-w-2xl mx-auto">
+        <div x-show="quizStarted && !quizCompleted" class="max-w-2xl mx-auto" x-cloak>
             <!-- Progress Bar -->
             <div class="mb-6 bg-gray-200 rounded-full h-2.5">
                 <div class="progress-bar bg-indigo-600 h-2.5 rounded-full" :style="`width: ${(currentQuestionIndex / questions.length) * 100}%`"></div>
@@ -123,7 +126,7 @@
         </div>
 
         <!-- Results Screen -->
-        <div x-show="quizCompleted" class="max-w-md mx-auto">
+        <div x-show="quizCompleted" class="max-w-md mx-auto" x-cloak>
             <div class="bg-white rounded-xl shadow-lg p-8 quiz-card">
                 <div class="text-center">
                     <div class="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-full mb-6">
